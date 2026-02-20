@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AsistenciaKeepers ATM</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#CB3524">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="ESCUDO ATM.png">
+    
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon" type="image/png" href="ESCUDO ATM.png">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <div class="ios-header-container">
+        <div class="header-top-row">
+            <div class="brand-box">
+                <img src="ESCUDO ATM.png" alt="Escudo" class="escudo-header">
+                <div class="brand-text">
+                    <h1 class="app-title">
+                        <span class="t-main">Asistencia</span><span class="t-red">Keepers</span> <span class="t-gray">ATM</span>
+                    </h1>
+                    <div class="date-info">
+                        <h2 id="currentMonthLabel">CARGANDO...</h2>
+                        <span class="badge-week" id="currentWeekLabel">...</span>
+                    </div>
+                </div>
+            </div>
+            <div class="right-buttons">
+                <button class="theme-toggle" onclick="showMonthlyStats()"><i class="fas fa-chart-bar"></i></button>
+                <button class="theme-toggle" onclick="openSettings()"><i class="fas fa-cog"></i></button>
+                <button class="theme-toggle" onclick="toggleTheme()"><i class="fas fa-moon" id="themeIcon"></i></button>
+            </div>
+        </div>
+        
+        <div class="nav-row">
+            <div class="nav-arrows-group">
+                <button class="nav-btn" onclick="changeDate(-1)"><i class="fas fa-chevron-left"></i></button>
+                <button class="nav-btn" onclick="changeDate(1)"><i class="fas fa-chevron-right"></i></button>
+            </div>
+            <div class="view-switcher">
+                <div id="btnWeek" class="switch-item active" onclick="switchView('week')">Semana</div>
+                <div id="btnMonth" class="switch-item" onclick="switchView('month')">Mes</div>
+            </div>
+        </div>
+        
+        <div id="datesContainer" class="ios-date-strip"></div>
+    </div>
+
+    <main class="agenda-feed"></main>
+
+    <div class="floating-nav">
+        <button id="addBtn" onclick="openAbsenceModal()">+</button>
+    </div>
+
+    <div id="saveFeedback" class="save-feedback-overlay">
+        <div class="feedback-content"><span class="feedback-icon">🧤</span><p>Reporte Guardado</p></div>
+    </div>
+
+    <div id="statsModal" class="ios-modal-overlay">
+        <div class="ios-sheet">
+            <div class="sheet-header"><div class="sheet-controls"><span class="sheet-title">Resumen Mensual</span><button class="btn-text save" onclick="closeStats()">Cerrar</button></div></div>
+            <div class="sheet-body" id="statsBody"></div>
+        </div>
+    </div>
+
+    <div id="settingsModal" class="ios-modal-overlay">
+        <div class="ios-sheet">
+            <div class="sheet-header"><div class="sheet-controls"><span class="sheet-title">Configuración</span><button class="btn-text save" onclick="closeSettings()">Cerrar</button></div></div>
+            <div class="sheet-body">
+                <div class="settings-group-label">NUBE (TIEMPO REAL)</div>
+                <div class="settings-card no-click"><div class="settings-icon"><i class="fas fa-sync"></i></div><div class="settings-info"><h3>Firebase</h3><p>Sincronización activa</p></div></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="newSessionModal" class="ios-modal-overlay">
+        <div class="ios-sheet">
+            <div class="sheet-header">
+                <div class="sheet-controls">
+                    <button class="btn-text cancel" onclick="closeModal()">Cancelar</button>
+                    <span class="sheet-title">Nuevo Reporte</span>
+                    <button class="btn-text save" onclick="saveAbsence()">Guardar</button>
+                </div>
+            </div>
+            <div class="sheet-body">
+                <div class="form-section">
+                    <label class="input-label">DATOS DEL PORTERO</label>
+                    <input type="text" id="inputKeeper" placeholder="Nombre completo" class="ios-input">
+                    <div class="row-inputs">
+                        <input type="text" id="inputTeam" placeholder="Equipo" class="ios-input">
+                        <input type="text" id="inputCoach" placeholder="EDP" class="ios-input">
+                    </div>
+                </div>
+                <div class="form-section">
+                    <label class="input-label">UBICACIÓN</label>
+                    <select id="inputSede" class="ios-input">
+                        <option value="CD ATM Alcalá">CD ATM Alcalá</option>
+                        <option value="Cotorruelo">Cotorruelo</option>
+                    </select>
+                </div>
+                <div class="form-section">
+                    <label class="input-label">MOTIVO DE AUSENCIA</label>
+                    <div class="segment-control-compact dynamic-reasons">
+                        <div class="segment-option active" data-val="Enfermo" data-color="#f1c40f" onclick="selectReason(this)">🤒 Enfermo</div>
+                        <div class="segment-option" data-val="Partido" data-color="#2ecc71" onclick="selectReason(this)">🏃 Partido</div>
+                        <div class="segment-option" data-val="Exámenes" data-color="#3498db" onclick="selectReason(this)">📚 Exámenes</div>
+                        <div class="segment-option" data-val="Viaje Escolar" data-color="#e67e22" onclick="selectReason(this)">🚌 Viaje Escolar</div>
+                        <div class="segment-option" data-val="Viaje Familiar" data-color="#d35400" onclick="selectReason(this)">✈️ V. Familiar</div>
+                        <div class="segment-option" data-val="Torneo" data-color="#9b59b6" onclick="selectReason(this)">🏆 Torneo</div>
+                    </div>
+                </div>
+                <div class="form-section">
+                    <label class="input-label">OBSERVACIONES</label>
+                    <textarea id="inputNotes" class="ios-input" rows="2" style="resize:none;" placeholder="Detalles..."></textarea>
+                </div>
+                <div style="height: 40px;"></div> </div>
+        </div>
+    </div>
+
+    <script>
+        window.currentDate = new Date();
+        window.viewMode = 'week';
+        window.selectedReason = 'Enfermo';
+
+        function openAbsenceModal() { document.getElementById('newSessionModal').classList.add('open'); }
+        function closeModal() { document.getElementById('newSessionModal').classList.remove('open'); }
+        function openSettings() { document.getElementById('settingsModal').classList.add('open'); }
+        function closeSettings() { document.getElementById('settingsModal').classList.remove('open'); }
+        function closeStats() { document.getElementById('statsModal').classList.remove('open'); }
+
+        function selectReason(el) {
+            document.querySelectorAll('.segment-option').forEach(o => {
+                o.classList.remove('active');
+                o.style.borderColor = 'var(--input-border)';
+                o.style.boxShadow = 'none';
+            });
+            el.classList.add('active');
+            const color = el.getAttribute('data-color');
+            el.style.borderColor = color;
+            el.style.boxShadow = `0 0 10px ${color}44`;
+            window.selectedReason = el.getAttribute('data-val');
+        }
+
+        function toggleTheme() {
+            document.body.classList.toggle('light-mode');
+            const isLight = document.body.classList.contains('light-mode');
+            document.getElementById('themeIcon').className = isLight ? 'fas fa-sun' : 'fas fa-moon';
+            localStorage.setItem('absence_theme', isLight ? 'light' : 'dark');
+        }
+
+        function showFeedback() {
+            const f = document.getElementById('saveFeedback');
+            f.classList.add('show');
+            setTimeout(() => f.classList.remove('show'), 1500);
+        }
+    </script>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getDatabase, ref, set, onValue, remove, push } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDlh6zkFYxLsTM-RcA6JB0m_zlILHOfRqA",
+            authDomain: "asistenciakeepers-atm.firebaseapp.com",
+            databaseURL: "https://asistenciakeepers-atm-default-rtdb.europe-west1.firebasedatabase.app",
+            projectId: "asistenciakeepers-atm",
+            storageBucket: "asistenciakeepers-atm.firebasestorage.app",
+            messagingSenderId: "448423444728",
+            appId: "1:448423444728:web:f6233b9cda680744e37b0d"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getDatabase(app);
+        let absenceDB = {};
+
+        if (localStorage.getItem('absence_theme') === 'light') { 
+            document.body.classList.add('light-mode'); 
+            document.getElementById('themeIcon').className = 'fas fa-sun'; 
+        }
+
+        onValue(ref(db, 'absence_events'), (snapshot) => {
+            absenceDB = snapshot.val() || {};
+            window.renderAll();
+        });
+
+        // FUNCIÓN GUARDAR COMPLETAMENTE OPERATIVA
+        window.saveAbsence = () => {
+            const keeper = document.getElementById('inputKeeper').value;
+            if(!keeper) return alert("Por favor, introduce el nombre del portero.");
+            
+            const dayKey = window.currentDate.toISOString().split('T')[0];
+            const newRef = push(ref(db, `absence_events/${dayKey}`));
+
+            set(newRef, {
+                id: newRef.key,
+                keeper: keeper,
+                team: document.getElementById('inputTeam').value,
+                coach: document.getElementById('inputCoach').value,
+                sede: document.getElementById('inputSede').value,
+                reason: window.selectedReason,
+                notes: document.getElementById('inputNotes').value
+            }).then(() => {
+                closeModal();
+                showFeedback();
+                // Limpiar campos tras guardar
+                document.getElementById('inputKeeper').value = "";
+                document.getElementById('inputTeam').value = "";
+                document.getElementById('inputCoach').value = "";
+                document.getElementById('inputNotes').value = "";
+            }).catch((error) => {
+                alert("Error al guardar: " + error.message);
+            });
+        };
+
+        window.deleteAbsence = (id) => {
+            if(confirm("¿Seguro que deseas borrar este reporte?")) {
+                const dayKey = window.currentDate.toISOString().split('T')[0];
+                remove(ref(db, `absence_events/${dayKey}/${id}`));
+            }
+        };
+
+        const reasonEmojis = { "Enfermo": "🤒", "Partido": "🏃", "Exámenes": "📚", "Viaje Escolar": "🚌", "Viaje Familiar": "✈️", "Torneo": "🏆" };
+
+        window.sendWhatsApp = (id) => {
+            const key = window.currentDate.toISOString().split('T')[0];
+            const item = (absenceDB[key] ? Object.values(absenceDB[key]) : []).find(a => a.id === id);
+            const emojiMotivo = reasonEmojis[item.reason] || "❓";
+            const msg = `⚽ *AUSENCIA PORTERO ATM*%0A` +
+                        `🧤 *Portero:* ${item.keeper}%0A` +
+                        `👥 *Equipo:* ${item.team}%0A` +
+                        `📝 *Motivo:* ${emojiMotivo} ${item.reason}%0A` +
+                        `🏟️ *Sede:* ${item.sede}%0A` +
+                        `📅 *Fecha:* ${key}` +
+                        (item.notes ? `%0A📝 *Observaciones:* ${item.notes}` : "");
+            window.open(`https://api.whatsapp.com/send?text=${msg}`, '_blank');
+        };
+
+        window.showMonthlyStats = () => {
+            const statsBody = document.getElementById('statsBody');
+            const prefix = `${window.currentDate.getFullYear()}-${String(window.currentDate.getMonth() + 1).padStart(2, '0')}`;
+            let counts = {};
+            Object.keys(absenceDB).forEach(key => { 
+                if (key.startsWith(prefix)) {
+                    Object.values(absenceDB[key]).forEach(abs => { counts[abs.keeper] = (counts[abs.keeper] || 0) + 1; }); 
+                }
+            });
+            const sorted = Object.entries(counts).sort((a,b) => b[1] - a[1]);
+            let html = `<div class="settings-group-label">RESUMEN DE ${document.getElementById('currentMonthLabel').innerText}</div>`;
+            if (!sorted.length) html += `<p style="text-align:center; padding:20px; color:var(--text-sec);">Sin ausencias este mes.</p>`;
+            else sorted.forEach(([name, total]) => { html += `<div class="settings-card no-click"><div class="settings-icon"><i class="fas fa-user-shield"></i></div><div class="settings-info"><h3>${name}</h3><p>${total} Faltas</p></div><div class="stat-badge">${total}</div></div>`; });
+            statsBody.innerHTML = html; 
+            document.getElementById('statsModal').classList.add('open');
+        };
+
+        window.renderAll = () => {
+            const months = ["ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO", "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE"];
+            document.getElementById('currentMonthLabel').innerText = `${months[window.currentDate.getMonth()]} ${window.currentDate.getFullYear()}`;
+            const jan1 = new Date(window.currentDate.getFullYear(), 0, 1);
+            const wNum = Math.ceil((((window.currentDate - jan1) / 86400000) + jan1.getDay() + 1) / 7);
+            document.getElementById('currentWeekLabel').innerText = `SEMANA ${wNum}`;
+
+            const container = document.getElementById('datesContainer');
+            container.innerHTML = '';
+            let d = new Date(window.currentDate);
+            let start = window.viewMode === 'week' ? new Date(d.setDate(d.getDate() - d.getDay() + (d.getDay() === 0 ? -6 : 1))) : new Date(window.currentDate.getFullYear(), window.currentDate.getMonth(), 1);
+            let limit = window.viewMode === 'week' ? 7 : new Date(window.currentDate.getFullYear(), window.currentDate.getMonth() + 1, 0).getDate();
+
+            for(let i=0; i<limit; i++) {
+                let temp = new Date(start);
+                window.viewMode === 'week' ? temp.setDate(start.getDate() + i) : temp.setDate(i + 1);
+                let k = temp.toISOString().split('T')[0];
+                let isSel = k === window.currentDate.toISOString().split('T')[0];
+                
+                let div = document.createElement('div');
+                div.className = `date-item ${isSel ? 'active' : ''}`;
+                div.onclick = () => { window.currentDate = temp; window.renderAll(); };
+                div.innerHTML = `<span class="day-name">${['DOM','LUN','MAR','MIÉ','JUE','VIE','SÁB'][temp.getDay()]}</span><span class="day-num">${temp.getDate()}</span>`;
+                if(absenceDB[k]) div.innerHTML += `<div class="dot-indicator"></div>`;
+                container.appendChild(div);
+            }
+
+            const feed = document.querySelector('.agenda-feed');
+            const dayKey = window.currentDate.toISOString().split('T')[0];
+            const data = absenceDB[dayKey] ? Object.values(absenceDB[dayKey]) : [];
+            
+            feed.innerHTML = data.length ? '' : `<div class="empty-state centered"><span class="empty-icon">🧤</span><h3>Todos los porteros han asistido</h3></div>`;
+            data.forEach(item => {
+                const emoji = reasonEmojis[item.reason] || "❓";
+                feed.innerHTML += `
+                <div class="agenda-card">
+                    <div class="modern-card">
+                        <div class="card-header-row">
+                            <span class="badge">${emoji} ${item.reason}</span>
+                            <span style="font-size:0.75rem; color:var(--text-sec); font-weight:700;">📍 ${item.sede}</span>
+                        </div>
+                        <h3 class="card-title">${item.keeper}</h3>
+                        <p class="card-subtitle">${item.team} • EDP: ${item.coach}</p>
+                        ${item.notes ? `<div style="font-size:0.8rem; color:var(--text-sec); margin-top:8px; border-top:1px solid var(--input-border); padding-top:8px;">📝 ${item.notes}</div>` : ''}
+                        <div class="card-actions">
+                            <button class="btn-ios-action whatsapp-btn" onclick="sendWhatsApp('${item.id}')"><i class="fab fa-whatsapp"></i> Reportar</button>
+                            <button class="btn-ios-action secondary" onclick="deleteAbsence('${item.id}')"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </div>
+                </div>`;
+            });
+        };
+
+        window.changeDate = (dir) => {
+            if(window.viewMode === 'week') window.currentDate.setDate(window.currentDate.getDate() + (dir*7));
+            else window.currentDate.setMonth(window.currentDate.getMonth() + dir);
+            window.renderAll();
+        };
+
+        window.switchView = (m) => {
+            window.viewMode = m;
+            document.getElementById('btnWeek').classList.toggle('active', m === 'week');
+            document.getElementById('btnMonth').classList.toggle('active', m === 'month');
+            window.renderAll();
+        };
+
+        window.renderAll();
+    </script>
+</body>
+</html>
