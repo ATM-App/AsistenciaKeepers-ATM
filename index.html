@@ -83,7 +83,7 @@
             <div class="sheet-header">
                 <div class="sheet-controls">
                     <button class="btn-text cancel" onclick="closeModal()">Cancelar</button>
-                    <span class="sheet-title">Nuevo Reporte</span>
+                    <span class="sheet-title" id="modalTitle">Nuevo Reporte</span>
                     <button class="btn-text save" onclick="saveAbsence()">Guardar</button>
                 </div>
             </div>
@@ -118,7 +118,8 @@
                     <label class="input-label">OBSERVACIONES</label>
                     <textarea id="inputNotes" class="ios-input" rows="2" style="resize:none;" placeholder="Detalles..."></textarea>
                 </div>
-                <div style="height: 40px;"></div> </div>
+                <div style="height: 40px;"></div>
+            </div>
         </div>
     </div>
 
@@ -126,8 +127,22 @@
         window.currentDate = new Date();
         window.viewMode = 'week';
         window.selectedReason = 'Enfermo';
+        window.currentEditingId = null; // Variable para saber si estamos editando o creando
 
-        function openAbsenceModal() { document.getElementById('newSessionModal').classList.add('open'); }
+        function openAbsenceModal() { 
+            // Reiniciar campos al abrir modo "Nuevo"
+            window.currentEditingId = null;
+            document.getElementById('modalTitle').innerText = "Nuevo Reporte";
+            document.getElementById('inputKeeper').value = "";
+            document.getElementById('inputTeam').value = "";
+            document.getElementById('inputCoach').value = "";
+            document.getElementById('inputNotes').value = "";
+            document.getElementById('inputSede').value = "CD ATM Alcalá";
+            selectReason(document.querySelector('.segment-option[data-val="Enfermo"]')); // Por defecto
+            
+            document.getElementById('newSessionModal').classList.add('open'); 
+        }
+
         function closeModal() { document.getElementById('newSessionModal').classList.remove('open'); }
         function openSettings() { document.getElementById('settingsModal').classList.add('open'); }
         function closeSettings() { document.getElementById('settingsModal').classList.remove('open'); }
@@ -139,11 +154,13 @@
                 o.style.borderColor = 'var(--input-border)';
                 o.style.boxShadow = 'none';
             });
-            el.classList.add('active');
-            const color = el.getAttribute('data-color');
-            el.style.borderColor = color;
-            el.style.boxShadow = `0 0 10px ${color}44`;
-            window.selectedReason = el.getAttribute('data-val');
+            if(el) {
+                el.classList.add('active');
+                const color = el.getAttribute('data-color');
+                el.style.borderColor = color;
+                el.style.boxShadow = `0 0 10px ${color}44`;
+                window.selectedReason = el.getAttribute('data-val');
+            }
         }
 
         function toggleTheme() {
@@ -188,33 +205,60 @@
             window.renderAll();
         });
 
-        // FUNCIÓN GUARDAR COMPLETAMENTE OPERATIVA
+        // FUNCIONALIDAD DE GUARDAR (CREAR Y EDITAR)
         window.saveAbsence = () => {
             const keeper = document.getElementById('inputKeeper').value;
             if(!keeper) return alert("Por favor, introduce el nombre del portero.");
             
             const dayKey = window.currentDate.toISOString().split('T')[0];
-            const newRef = push(ref(db, `absence_events/${dayKey}`));
-
-            set(newRef, {
-                id: newRef.key,
+            
+            const dataToSave = {
                 keeper: keeper,
                 team: document.getElementById('inputTeam').value,
                 coach: document.getElementById('inputCoach').value,
                 sede: document.getElementById('inputSede').value,
                 reason: window.selectedReason,
                 notes: document.getElementById('inputNotes').value
-            }).then(() => {
+            };
+
+            let savePromise;
+
+            // Si estamos editando uno existente, actualizamos. Si no, creamos uno nuevo.
+            if (window.currentEditingId) {
+                dataToSave.id = window.currentEditingId;
+                savePromise = set(ref(db, `absence_events/${dayKey}/${window.currentEditingId}`), dataToSave);
+            } else {
+                const newRef = push(ref(db, `absence_events/${dayKey}`));
+                dataToSave.id = newRef.key;
+                savePromise = set(newRef, dataToSave);
+            }
+
+            savePromise.then(() => {
                 closeModal();
                 showFeedback();
-                // Limpiar campos tras guardar
-                document.getElementById('inputKeeper').value = "";
-                document.getElementById('inputTeam').value = "";
-                document.getElementById('inputCoach').value = "";
-                document.getElementById('inputNotes').value = "";
             }).catch((error) => {
                 alert("Error al guardar: " + error.message);
             });
+        };
+
+        // FUNCIONALIDAD DE ABRIR MODO EDICIÓN
+        window.editAbsence = (id) => {
+            const dayKey = window.currentDate.toISOString().split('T')[0];
+            const item = absenceDB[dayKey][id];
+            if(!item) return;
+
+            window.currentEditingId = id;
+            document.getElementById('modalTitle').innerText = "Editar Reporte";
+            document.getElementById('inputKeeper').value = item.keeper || '';
+            document.getElementById('inputTeam').value = item.team || '';
+            document.getElementById('inputCoach').value = item.coach || '';
+            document.getElementById('inputSede').value = item.sede || 'CD ATM Alcalá';
+            document.getElementById('inputNotes').value = item.notes || '';
+            
+            const reasonEl = document.querySelector(`.segment-option[data-val="${item.reason}"]`);
+            if(reasonEl) window.selectReason(reasonEl);
+
+            document.getElementById('newSessionModal').classList.add('open');
         };
 
         window.deleteAbsence = (id) => {
@@ -301,8 +345,10 @@
                         <h3 class="card-title">${item.keeper}</h3>
                         <p class="card-subtitle">${item.team} • EDP: ${item.coach}</p>
                         ${item.notes ? `<div style="font-size:0.8rem; color:var(--text-sec); margin-top:8px; border-top:1px solid var(--input-border); padding-top:8px;">📝 ${item.notes}</div>` : ''}
+                        
                         <div class="card-actions">
                             <button class="btn-ios-action whatsapp-btn" onclick="sendWhatsApp('${item.id}')"><i class="fab fa-whatsapp"></i> Reportar</button>
+                            <button class="btn-ios-action secondary" onclick="editAbsence('${item.id}')"><i class="fas fa-pen"></i></button>
                             <button class="btn-ios-action secondary" onclick="deleteAbsence('${item.id}')"><i class="fas fa-trash"></i></button>
                         </div>
                     </div>
