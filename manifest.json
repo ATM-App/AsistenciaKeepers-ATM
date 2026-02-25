@@ -1,6 +1,6 @@
 {
   "name": "AsistenciaKeepers ATM",
-  "short_name": "Keepers",
+  "short_name": "AsistenciaKeepers",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0b0d17",
@@ -20,4 +20,5 @@
       "purpose": "any"
     }
   ]
+
 }
