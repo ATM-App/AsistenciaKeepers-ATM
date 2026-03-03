@@ -8,10 +8,11 @@
     <meta name="theme-color" content="#CB3524">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <link rel="apple-touch-icon" href="ESCUDO ATM.png">
+    
+    <link rel="apple-touch-icon" href="AsistenciaKeepers.png">
+    <link rel="icon" type="image/png" href="AsistenciaKeepers.png">
     
     <link rel="stylesheet" href="style.css">
-    <link rel="icon" type="image/png" href="ESCUDO ATM.png">
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
@@ -178,7 +179,6 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        // Añadida la importación de Auth
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getDatabase, ref, set, onValue, remove, push } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
@@ -193,7 +193,7 @@
         };
 
         const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app); // Inicializar Auth
+        const auth = getAuth(app);
         const db = getDatabase(app);
         let absenceDB = {};
 
@@ -202,12 +202,17 @@
             document.getElementById('themeIcon').className = 'fas fa-sun'; 
         }
 
-        // 1. Iniciar sesión de forma invisible
-        signInAnonymously(auth).catch((error) => {
-            console.error("Error de autenticación:", error.message);
-        });
+        // 1. INICIO DE SESIÓN INVISIBLE
+        signInAnonymously(auth)
+            .then(() => {
+                console.log("Autenticación correcta.");
+            })
+            .catch((error) => {
+                console.error("Fallo Auth:", error);
+                alert("Atención: Google Cloud está bloqueando la conexión. Ve a Google Cloud > APIs y Servicios > Credenciales > Edita tu clave de API > Restricciones de aplicación: pon 'Ninguna'. (" + error.message + ")");
+            });
 
-        // 2. Solo leer la base de datos cuando la sesión se haya confirmado
+        // 2. SOLO LEER SI ESTÁ AUTENTICADO
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 onValue(ref(db, 'absence_events'), (snapshot) => {
@@ -218,6 +223,10 @@
         });
 
         window.saveAbsence = () => {
+            if (!auth.currentUser) {
+                return alert("ERROR: Aún no te has conectado a la base de datos de Firebase. Asegúrate de haber quitado la restricción de la clave API.");
+            }
+
             const keeper = document.getElementById('inputKeeper').value;
             if(!keeper) return alert("Por favor, introduce el nombre del portero.");
             
@@ -246,8 +255,12 @@
             savePromise.then(() => {
                 closeModal();
                 showFeedback();
+                document.getElementById('inputKeeper').value = "";
+                document.getElementById('inputTeam').value = "";
+                document.getElementById('inputCoach').value = "";
+                document.getElementById('inputNotes').value = "";
             }).catch((error) => {
-                alert("Error al guardar: " + error.message);
+                alert("Error al guardar: PERMISSION_DENIED. Quita la restricción de sitios web en Google Cloud.");
             });
         };
 
@@ -271,9 +284,10 @@
         };
 
         window.deleteAbsence = (id) => {
+            if (!auth.currentUser) return alert("Error: No estás conectado a la base de datos.");
             if(confirm("¿Seguro que deseas borrar este reporte?")) {
                 const dayKey = window.currentDate.toISOString().split('T')[0];
-                remove(ref(db, `absence_events/${dayKey}/${id}`));
+                remove(ref(db, `absence_events/${dayKey}/${id}`)).catch(e => alert("Error al borrar: " + e.message));
             }
         };
 
